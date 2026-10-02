@@ -70,35 +70,37 @@ public abstract class InstallClientTask extends DefaultTask{
             }))
             .GET()
             .build();
-        
-        var response = http.send(request, BodyHandlers.ofInputStream());
-        try(var in = response.body(); var out = Files.newOutputStream(dest.toPath())){
-            var totalBytesOpt = response.headers().firstValueAsLong("Content-Length");
-            if(totalBytesOpt.isEmpty()){
-                in.transferTo(out);
-            }else{
-                long totalBytes = totalBytesOpt.getAsLong();
 
-                var buf = new byte[65536];
-                long totalRead = 0;
+        try{
+            var response = http.send(request, BodyHandlers.ofInputStream());
+            try(var in = response.body(); var out = Files.newOutputStream(dest.toPath())){
+                var totalBytesOpt = response.headers().firstValueAsLong("Content-Length");
+                if(totalBytesOpt.isEmpty()){
+                    in.transferTo(out);
+                }else{
+                    long totalBytes = totalBytesOpt.getAsLong();
 
-                System.out.print("Downloading client file...");
+                    var buf = new byte[65536];
+                    long totalRead = 0;
 
-                int read;
-                while((read = in.read(buf)) != -1){
-                    System.out.flush();
+                    System.out.print("Downloading client file...");
 
-                    out.write(buf, 0, read);
-                    totalRead += read;
+                    int read;
+                    while((read = in.read(buf)) != -1){
+                        System.out.flush();
 
-                    System.out.printf(
-                        "\rDownloading client file: %.2f MiB / %.2f MiB (%.0f%%)",
-                        totalRead / (1024f * 1024f),
-                        totalBytes / (1024f * 1024f),
-                        totalRead * 100f / totalBytes
-                    );
+                        out.write(buf, 0, read);
+                        totalRead += read;
+
+                        System.out.printf(
+                            "\rDownloading client file: %.2f MiB / %.2f MiB (%.0f%%)",
+                            totalRead / (1024f * 1024f),
+                            totalBytes / (1024f * 1024f),
+                            totalRead * 100f / totalBytes
+                        );
+                    }
+                    System.out.println();
                 }
-                System.out.println();
             }
         }catch(IOException | InterruptedException e){
             throw new GradleException("Couldn't download client", e);
