@@ -57,48 +57,48 @@ public abstract class InstallClientTask extends DefaultTask{
         var num = getBuildNumber().get();
         var type = getBuildType().get();
 
-        try(var http = HttpClient.newBuilder()
+        var http = HttpClient.newBuilder()
             .followRedirects(Redirect.NORMAL)
-            .build()){
-            var request = HttpRequest.newBuilder()
-                .uri(URI.create(switch(type){
-                    case official ->
-                        String.format("https://github.com/Anuken/Mindustry/releases/download/v%s/Mindustry.jar", num);
-                    case bleedingEdge ->
-                        String.format("https://github.com/Anuken/MindustryBuilds/releases/download/%s/Mindustry-BE-Desktop-%s.jar", num, num);
-                }))
-                .GET()
-                .build();
+            .build()
 
-            var response = http.send(request, BodyHandlers.ofInputStream());
-            try(var in = response.body(); var out = Files.newOutputStream(dest.toPath())){
-                var totalBytesOpt = response.headers().firstValueAsLong("Content-Length");
-                if(totalBytesOpt.isEmpty()){
-                    in.transferTo(out);
-                }else{
-                    long totalBytes = totalBytesOpt.getAsLong();
+        var request = HttpRequest.newBuilder()
+            .uri(URI.create(switch(type){
+                case official ->
+                    String.format("https://github.com/Anuken/Mindustry/releases/download/v%s/Mindustry.jar", num);
+                case bleedingEdge ->
+                    String.format("https://github.com/Anuken/MindustryBuilds/releases/download/%s/Mindustry-BE-Desktop-%s.jar", num, num);
+            }))
+            .GET()
+            .build();
+        
+        var response = http.send(request, BodyHandlers.ofInputStream());
+        try(var in = response.body(); var out = Files.newOutputStream(dest.toPath())){
+            var totalBytesOpt = response.headers().firstValueAsLong("Content-Length");
+            if(totalBytesOpt.isEmpty()){
+                in.transferTo(out);
+            }else{
+                long totalBytes = totalBytesOpt.getAsLong();
 
-                    var buf = new byte[65536];
-                    long totalRead = 0;
+                var buf = new byte[65536];
+                long totalRead = 0;
 
-                    System.out.print("Downloading client file...");
+                System.out.print("Downloading client file...");
 
-                    int read;
-                    while((read = in.read(buf)) != -1){
-                        System.out.flush();
+                int read;
+                while((read = in.read(buf)) != -1){
+                    System.out.flush();
 
-                        out.write(buf, 0, read);
-                        totalRead += read;
+                    out.write(buf, 0, read);
+                    totalRead += read;
 
-                        System.out.printf(
-                            "\rDownloading client file: %.2f MiB / %.2f MiB (%.0f%%)",
-                            totalRead / (1024f * 1024f),
-                            totalBytes / (1024f * 1024f),
-                            totalRead * 100f / totalBytes
-                        );
-                    }
-                    System.out.println();
+                    System.out.printf(
+                        "\rDownloading client file: %.2f MiB / %.2f MiB (%.0f%%)",
+                        totalRead / (1024f * 1024f),
+                        totalBytes / (1024f * 1024f),
+                        totalRead * 100f / totalBytes
+                    );
                 }
+                System.out.println();
             }
         }catch(IOException | InterruptedException e){
             throw new GradleException("Couldn't download client", e);
