@@ -59,7 +59,7 @@ public abstract class InstallClientTask extends DefaultTask{
 
         var http = HttpClient.newBuilder()
             .followRedirects(Redirect.NORMAL)
-            .build()
+            .build();
 
         var request = HttpRequest.newBuilder()
             .uri(URI.create(switch(type){
