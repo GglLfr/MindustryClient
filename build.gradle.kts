@@ -50,6 +50,9 @@ allprojects{
     java{
         withJavadocJar()
         withSourcesJar()
+
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     tasks.withType<JavaCompile>().configureEach{
@@ -66,9 +69,6 @@ allprojects{
                 .map{"--add-exports=${it.substring("--add-opens=".length)}"}
             )
         }
-
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
     }
 
     tasks.withType<Javadoc>().configureEach{

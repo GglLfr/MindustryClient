@@ -31,10 +31,7 @@ public abstract class RunClientTask extends DefaultTask{
         var logger = getLogger();
         var client = getClient().get();
         var jvmAgs = List.of(
-            // Match the ones in native Mindustry client json file.
             "-Dhttps.protocols=TLSv1.2,TLSv1.1,TLSv1",
-            "-XX:+ShowCodeDetailsInExceptionMessages",
-            "-XX:+UseCompactObjectHeaders",
             "--enable-native-access=ALL-UNNAMED"
         );
 
