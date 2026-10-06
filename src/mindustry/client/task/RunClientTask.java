@@ -48,7 +48,7 @@ public abstract class RunClientTask extends DefaultTask{
                 else throw new GradleException(String.format("Unsupported host OS %s", OS.osName));
             });
         }else if(client.path() != null){
-            if(isClientJar(client.path())){
+            if(isClientJar(client.path().toPath())){
                 getExecOperations().javaexec(e -> {
                     e.getMainClass().set("mindustry.desktop.DesktopLauncher");
                     e.jvmArgs(jvmAgs);

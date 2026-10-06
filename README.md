@@ -9,8 +9,9 @@ Gradle plugin to conveniently detect and run Mindustry. The plugin defines
 - a `run` task, which runs Mindustry.
 
 Additionally, you may define some optional properties in either project-scoped `gradle.properties` or through global
-`~/.gradle/gradle.properties` (or even through the `-P` option if you're that kind of person), namely
+`~/.gradle/gradle.properties`, namely
 
+- `mindustryInstallPath`, to specify where Mindustry client JARs are downloaded to (defaults to `%APPDATA%/clients`);
 - `mindustryIgnoreSteam`, to ignore Steam installations (defaults to `false`); and
 - `mindustryPath`, to explicitly give the path to your Mindustry JAR or executable file.
 

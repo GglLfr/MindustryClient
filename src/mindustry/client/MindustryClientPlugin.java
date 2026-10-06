@@ -5,6 +5,7 @@ import mindustry.client.task.*;
 import org.gradle.api.*;
 
 import java.io.*;
+import java.nio.file.*;
 import java.util.*;
 import java.util.jar.Attributes.*;
 import java.util.jar.*;
@@ -22,7 +23,7 @@ public class MindustryClientPlugin implements Plugin<Project>{
 
         var client = gradle.getSharedServices().registerIfAbsent(serviceName, MindustryClientService.class, s -> s.parameters(p -> {
             p.getIgnoreSteam().set(providers.gradleProperty("mindustryIgnoreSteam").map(Boolean::valueOf).orElse(false));
-            p.getPath().set(layout.getProjectDirectory().file(providers.gradleProperty("mindustryPath")));
+            p.getPath().set(layout.file(providers.gradleProperty("mindustryPath").map(File::new)));
         }));
 
         String mindustryVersion;
@@ -63,26 +64,19 @@ public class MindustryClientPlugin implements Plugin<Project>{
     }
 
     /**
-     * Calls {@link File#mkdirs()} if it's not {@code null}.
-     * @param file The file.
-     */
-    public static void mkdirs(File file){
-        if(file != null) file.mkdirs();
-    }
-
-    /**
      * Client jar file validation.
-     * @param file The file.
+     * @param path The path to the file file.
      * @return Whether the file exists and is a JAR.
      */
-    public static boolean isClientJar(File file){
-        if(file == null || !file.exists()) return false;
-        try(var jar = new JarFile(file)){
+    public static boolean isClientJar(Path path){
+        if(path == null || !Files.isRegularFile(path)) return false;
+
+        try(var jar = new JarFile(path.toFile())){
             var manifest = jar.getManifest();
             if(manifest == null) return false;
 
-            var main = manifest.getMainAttributes().getValue(Name.MAIN_CLASS);
-            return main != null && main.equals("mindustry.desktop.DesktopLauncher");
+            return "mindustry.desktop.DesktopLauncher".equals(manifest.getMainAttributes().getValue(Name.MAIN_CLASS)) &&
+                jar.getJarEntry("mindustry/desktop/DesktopLauncher.class") != null;
         }catch(IOException e){
             return false;
         }

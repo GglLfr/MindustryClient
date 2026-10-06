@@ -1,5 +1,6 @@
 package mindustry.client.task;
 
+import arc.util.*;
 import mindustry.client.*;
 import mindustry.client.service.*;
 import org.gradle.api.*;
@@ -13,6 +14,7 @@ import java.net.*;
 import java.net.http.*;
 import java.net.http.HttpClient.*;
 import java.net.http.HttpResponse.*;
+import java.nio.channels.*;
 import java.nio.file.*;
 
 import static mindustry.client.MindustryClientPlugin.*;
@@ -31,13 +33,14 @@ public abstract class InstallClientTask extends DefaultTask{
     /** @return The resulting client file, if downloaded. */
     public abstract @OutputFile RegularFileProperty getClientFile();
 
-    /** @return The injected project layout. */
-    protected abstract @Inject ProjectLayout getLayout();
-
     /** Creates the task, along with property conventions. */
     @Inject
-    public InstallClientTask(){
-        getClientFile().convention(getBuildNumber().flatMap(num -> getBuildType().flatMap(type -> getLayout().getBuildDirectory().file(String.format("clients/Mindustry-%s-%s.jar", type, num)))));
+    public InstallClientTask(ProviderFactory providers, ProjectLayout layout){
+        var dir = providers.gradleProperty("mindustryInstallPath").map(File::new).orElse(new File(OS.getAppDataDirectoryString("Mindustry"), "clients"));
+        getClientFile().set(layout.file(getBuildNumber()
+            .zip(getBuildType(), (num, type) -> String.format("Mindustry-%s-%s.jar", type, num))
+            .zip(dir, (name, d) -> new File(d, name))
+        ));
     }
 
     /** Downloads the client, or pass through if an existing client is detected. */
@@ -46,14 +49,14 @@ public abstract class InstallClientTask extends DefaultTask{
         var client = getClient().get();
         if(client.path() != null || !client.ignoreSteam() && client.steamPath() != null) return;
 
-        var dest = getClientFile().get().getAsFile();
-        mkdirs(dest.getParentFile());
-
-        if(dest.exists() && isClientJar(dest)) return;
+        var dest = getClientFile().get().getAsFile().toPath();
+        try{
+            Files.createDirectories(dest.getParent());
+        }catch(IOException e){
+            throw new GradleException("Couldn't create clients directory", e);
+        }
 
         var logger = getLogger();
-        logger.lifecycle("Installing client...");
-
         var num = getBuildNumber().get();
         var type = getBuildType().get();
 
@@ -71,11 +74,18 @@ public abstract class InstallClientTask extends DefaultTask{
             .GET()
             .build();
 
-        try{
+        var lockPath = dest.resolveSibling(dest.getFileName() + ".lock");
+        try(var lockChannel = FileChannel.open(lockPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+            @SuppressWarnings("unused") var lock = lockChannel.lock()
+        ){
+            if(isClientJar(dest)) return;
+
+            logger.lifecycle("Installing client...");
             var response = http.send(request, BodyHandlers.ofInputStream());
-            try(var in = response.body(); var out = Files.newOutputStream(dest.toPath())){
+
+            try(var in = checkResponse(response); var out = Files.newOutputStream(dest)){
                 var totalBytesOpt = response.headers().firstValueAsLong("Content-Length");
-                if(totalBytesOpt.isEmpty()){
+                if(totalBytesOpt.isEmpty() || totalBytesOpt.getAsLong() == 0){
                     in.transferTo(out);
                 }else{
                     long totalBytes = totalBytesOpt.getAsLong();
@@ -102,10 +112,18 @@ public abstract class InstallClientTask extends DefaultTask{
                     System.out.println();
                 }
             }
+
+            if(!isClientJar(dest)) throw new IOException("Downloaded file is not a Mindustry client JAR");
+            logger.lifecycle(String.format("Installed %s client version %s!", type, num));
         }catch(IOException | InterruptedException e){
             throw new GradleException("Couldn't download client", e);
         }
+    }
 
-        logger.lifecycle(String.format("Installed %s client version %s!", type, num));
+    private static <T extends Closeable> T checkResponse(HttpResponse<T> response) throws IOException{
+        if(response.statusCode() != 200) try(@SuppressWarnings("unused") var body = response.body()){
+            throw new IOException(String.format("HTTP %d from %s", response.statusCode(), response.uri()));
+        }
+        return response.body();
     }
 }
