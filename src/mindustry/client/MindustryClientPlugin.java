@@ -19,11 +19,11 @@ public class MindustryClientPlugin implements Plugin<Project>{
     public void apply(Project target){
         var gradle = target.getGradle();
         var providers = target.getProviders();
-        var layout = target.getLayout();
+        var projectDir = target.getLayout().getProjectDirectory();
 
         var client = gradle.getSharedServices().registerIfAbsent(serviceName, MindustryClientService.class, s -> s.parameters(p -> {
             p.getIgnoreSteam().set(providers.gradleProperty("mindustryIgnoreSteam").map(Boolean::valueOf).orElse(false));
-            p.getPath().set(layout.file(providers.gradleProperty("mindustryPath").map(File::new)));
+            p.getPath().set(providers.gradleProperty("mindustryPath").map(projectDir::file));
         }));
 
         String mindustryVersion;
