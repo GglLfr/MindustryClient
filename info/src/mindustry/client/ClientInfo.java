@@ -61,7 +61,7 @@ public record ClientInfo(
             }
         }
 
-        var steamRoot = steamDirs.stream().findFirst();
+        var steamRoot = steamDirs.stream().filter(File::isDirectory).findFirst();
         if(steamRoot.isPresent()){
             var libraryPaths = new ArrayList<>(Collections.singletonList(new File(steamRoot.get(), "steamapps")));
             var vdfFile = new File(steamRoot.get(), "steamapps/libraryfolders.vdf");
@@ -82,14 +82,14 @@ public record ClientInfo(
 
                 String name;
                 try{
-                    var m = Pattern.compile("\"installdir\"\\s+\"([^\"]+)\"").matcher(Files.readString(vdfFile.toPath(), StandardCharsets.UTF_8));
+                    var m = Pattern.compile("\"installdir\"\\s+\"([^\"]+)\"").matcher(Files.readString(acf.toPath(), StandardCharsets.UTF_8));
                     if(!m.find()) throw new IOException();
                     name = m.group(1);
                 }catch(IOException ignored){
                     return Stream.empty();
                 }
 
-                var dir = new File(steamapps, name);
+                var dir = new File(new File(steamapps, "common"), name);
                 return Stream.ofNullable(dir.exists() ? dir : null);
             }).findFirst();
 
